@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@automate-pr/types": "workspace:*",
-    "@octokit/rest": "^20.0.2"
+    "@octokit/rest": "^21.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
