@@ -1,0 +1,37 @@
+version: 2
+secret:
+  ignored-paths:
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/*.test.ts"
+    - "**/*.spec.ts"
+    - "**/mock/**"
+    - "**/mocks/**"
+    - "**/fixtures/**"
+    
+  ignored-matches:
+    # Ignore example API keys in documentation
+    - name: Example API Key
+      match: "example_api_key_xxxxxxxxxxxxx"
+    
+    # Ignore test tokens
+    - name: Test Token
+      match: "test_token_xxxxxxxxxxxxx"
+
+paths-ignore:
+  - "**/*.md"
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/pnpm-lock.yaml"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/test/**"
+  - "**/tests/**"
+  
+matches-ignore:
+  - name: "High-entropy string"
+    match: "too-many-secrets"
+    
+exit-zero: false  # Exit with error code on findings
+verbose: true     # Show detailed output
+show-secrets: false  # Don't display secret values in output 
