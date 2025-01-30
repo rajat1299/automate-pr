@@ -1,0 +1,19 @@
+# Global owners (if no other rule matches)
+*                    @automate-pr/core-team
+
+# Documentation owners
+/docs/               @automate-pr/docs-team
+
+# Infrastructure and CI/CD
+/.github/            @automate-pr/devops-team
+/.commitlintrc.js    @automate-pr/devops-team
+/package.json        @automate-pr/devops-team
+
+# Core packages
+/packages/cli/       @automate-pr/cli-team
+/packages/core/      @automate-pr/core-team
+/packages/shared/    @automate-pr/core-team
+
+# Security-sensitive areas
+/packages/*/auth/    @automate-pr/security-team
+/packages/*/crypto/  @automate-pr/security-team 

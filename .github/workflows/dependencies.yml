@@ -1,0 +1,122 @@
+name: Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Run every Monday at midnight
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check for updates
+        id: check
+        run: |
+          npm outdated --json > outdated.json
+          echo "has_updates=$([ -s outdated.json ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+      
+      - name: Create update branch
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          git checkout -b deps/update-$(date +%Y-%m-%d)
+          
+          # Update dependencies
+          npm update
+          
+          # Commit changes
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add package.json package-lock.json
+          git commit -m "build(deps): update dependencies"
+      
+      - name: Run tests
+        if: steps.check.outputs.has_updates == 'true'
+        run: npm test
+      
+      - name: Create Pull Request
+        if: steps.check.outputs.has_updates == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "build(deps): update dependencies"
+          branch: deps/update-$(date +%Y-%m-%d)
+          delete-branch: true
+          title: "build(deps): update dependencies"
+          body: |
+            🤖 Automated dependency updates
+            
+            This PR updates project dependencies to their latest compatible versions.
+            
+            <details>
+            <summary>Updates</summary>
+            
+            ```json
+            ${{ steps.check.outputs.updates }}
+            ```
+            </details>
+            
+            ### Checks
+            - [ ] Review dependency changes
+            - [ ] Check test results
+            - [ ] Verify no breaking changes
+            - [ ] Check security advisories
+          labels: |
+            dependencies
+            automated
+          assignees: ${{ github.repository_owner }}
+      
+      - name: Run security audit
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          npm audit
+          
+          if [ $? -eq 1 ]; then
+            echo "⚠️ Security vulnerabilities found in updated dependencies"
+            echo "::warning::Security vulnerabilities found in updated dependencies"
+          fi
+      
+      - name: Check for breaking changes
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          MAJOR_UPDATES=$(jq -r 'to_entries | map(select(.value.current | split(".")[0] != .value.wanted | split(".")[0])) | length' outdated.json)
+          
+          if [ $MAJOR_UPDATES -gt 0 ]; then
+            echo "⚠️ Breaking changes detected in dependency updates"
+            echo "::warning::Breaking changes detected in dependency updates"
+          fi
+
+  stale:
+    name: Close Stale Updates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Stale action
+        uses: actions/stale@v8
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 7
+          days-before-close: 3
+          stale-pr-message: |
+            This dependency update PR has been marked as stale because it has been open for 7 days with no activity.
+            
+            It will be closed in 3 days if no further activity occurs.
+          close-pr-message: |
+            This dependency update PR has been closed due to inactivity.
+            
+            The next scheduled update will create a new PR if updates are still needed.
+          stale-pr-label: stale
+          exempt-pr-labels: security
+          only-labels: dependencies 

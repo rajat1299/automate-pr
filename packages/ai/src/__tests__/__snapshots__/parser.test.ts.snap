@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ResponseParser > parse > parses valid AI response 1`] = `
+{
+  "files": [
+    {
+      "action": "modify",
+      "diff": "@@ -1,4 +1,4 @@\\n-const Button = () => {\\n+const Button = ({ children }) => {\\n",
+      "path": "src/components/Button.tsx",
+    },
+  ],
+  "metadata": {
+    "confidence": 0.95,
+    "estimatedComplexity": "low",
+    "reasoning": "Simple prop addition with no breaking changes",
+    "suggestedLabels": [
+      "components",
+      "enhancement",
+    ],
+  },
+  "pr": {
+    "body": "Add support for children prop in Button component",
+    "breaking": false,
+    "scope": "components",
+    "title": "fix: improve Button component props",
+    "type": "fix",
+  },
+  "reviewers": [
+    {
+      "expertise": [
+        "react",
+        "typescript",
+        "design-systems",
+      ],
+      "reason": "UI component expertise",
+      "username": "ui-team-lead",
+    },
+  ],
+}
+`;
+
+exports[`ResponseParser > parseDiff > parses unified diff format 1`] = `
+{
+  "additions": 2,
+  "chunks": [
+    {
+      "content": "@@ -1,4 +1,4 @@
+-const Button = () => {
++const Button = ({ children }) => {
+   return (
+-    <button>Click me</button>
++    <button>{children}</button>
+   );
+};",
+      "newLines": 4,
+      "newStart": 1,
+      "oldLines": 4,
+      "oldStart": 1,
+    },
+  ],
+  "deletions": 2,
+  "files": [
+    "src/components/Button.tsx",
+  ],
+} 

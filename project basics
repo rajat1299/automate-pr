@@ -1,0 +1,28 @@
+1. Tech Stack Selection
+
+Category	Choice	Rationale
+Language	TypeScript 5.4+	Type safety + GitHub API ecosystem
+Runtime	Bun 1.1+	Faster than Node + built-in test runner
+Monorepo	Turborepo	Modern workspace management
+CI/CD	GitHub Actions	Native integration
+Linting	Biome	Faster alternative to ESLint
+Testing	Vitest + Playwright	Component + E2E testing
+
+Repository Structure
+
+.github/
+  workflows/
+    ci.yml
+    release.yml
+apps/
+  cli/ # Main CLI tool
+  web/ # Future dashboard
+packages/
+  core/ # AI/PR logic
+  github/ # GitHub API abstraction
+  ai/ # DeepSeek R1 integration
+  types/ # Shared TS types
+  utils/ # Common utilities
+docs/
+  architecture.md
+  contributor-guide.md

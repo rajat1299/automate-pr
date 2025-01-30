@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Generate changelog
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 1
+            });
+            
+            const lastRelease = releases[0]?.tag_name;
+            const range = lastRelease ? `${lastRelease}...${process.env.GITHUB_REF}` : process.env.GITHUB_REF;
+            
+            const { data: commits } = await github.rest.repos.compareCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: lastRelease || '',
+              head: process.env.GITHUB_REF
+            });
+            
+            const categories = {
+              feat: '🚀 Features',
+              fix: '🐛 Bug Fixes',
+              perf: '⚡️ Performance',
+              refactor: '♻️ Refactoring',
+              docs: '📚 Documentation',
+              test: '🧪 Testing',
+              build: '🛠️ Build',
+              ci: '⚙️ CI',
+              chore: '🧹 Chores'
+            };
+            
+            const changes = {};
+            
+            for (const commit of commits.commits) {
+              const message = commit.commit.message.split('\n')[0];
+              const match = message.match(/^(\w+)(?:\(.*?\))?:\s*(.+)$/);
+              
+              if (match) {
+                const [, type, desc] = match;
+                const category = categories[type] || '🔄 Other Changes';
+                
+                if (!changes[category]) {
+                  changes[category] = [];
+                }
+                
+                changes[category].push(`- ${desc} (${commit.sha.substring(0, 7)})`);
+              }
+            }
+            
+            let changelog = `## What's Changed\n\n`;
+            
+            for (const [category, items] of Object.entries(changes)) {
+              if (items.length > 0) {
+                changelog += `### ${category}\n${items.join('\n')}\n\n`;
+              }
+            }
+            
+            return changelog;
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.result }}
+          draft: false
+          prerelease: false
+
+  publish:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: release
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [release, publish]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { repo, owner } = context.repo;
+            const release = context.ref.replace('refs/tags/', '');
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: context.issue.number,
+              body: `🎉 Release ${release} has been published successfully!
+              
+              - 📦 NPM: https://www.npmjs.com/package/@automate-pr/core
+              - 📝 Changelog: https://github.com/${owner}/${repo}/releases/tag/${release}`
+            });
+
+      - name: Notify failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { repo, owner } = context.repo;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: context.issue.number,
+              body: `❌ Release workflow failed. Please check the [workflow run](https://github.com/${owner}/${repo}/actions/runs/${context.runId}) for details.`
+            }); 
